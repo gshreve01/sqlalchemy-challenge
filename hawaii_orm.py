@@ -75,9 +75,9 @@ def get_precipitations():
     prcps = []
     for date, prcp in prcp_data:
         precipitation = Precipitation(date, prcp)
-        prcps.append(precipitation)
+        prcps.append(precipitation.serialize())
         
-    return prcps
+    return {"precipitations": prcps}
  
 
 def get_stations():
@@ -114,6 +114,7 @@ def get_most_active_station_temperatures():
     one_year_ago_date = get_12_months_back_date()
     
     last_12_months_temp = session.query(Measurement.date, Measurement.tobs) \
+        .filter(Measurement.station == Station.station) \
         .filter(Measurement.date >= one_year_ago_date) \
         .filter(Measurement.station == most_active_station).all()
 
@@ -123,8 +124,43 @@ def get_most_active_station_temperatures():
     return {"most_active_station": most_active_station,
             "tobs_list": tobs_list}
 
+def get_temperatures_start_end(start, end):
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+    
+    # Save references to each table
+    Measurement = Base.classes.measurement
+    
+    sel=[func.min(Measurement.tobs),
+    func.max(Measurement.tobs),
+    func.avg(Measurement.tobs)]
+   
+    if end == None:
+        query = session.query(*sel).filter(Measurement.date >= start)
+    else:
+        query = session.query(*sel).filter(Measurement.date >= start) \
+            .filter(Measurement.date <= end)
 
-tobs = get_most_active_station_temperatures()
+    statistics_data = query.all()
+    print(statistics_data)
+    
+    # Verify that data was found for the time range
+    if statistics_data[0][0] != None:  
+        result = {"start": start,
+                  "tmin" : statistics_data[0][0],
+                  "tmax" : statistics_data[0][1],
+                  "tavg" : round(statistics_data[0][2], 1),
+                  }
+    else:
+        result = {"start": start,
+                  "result": "No data found"
+                  }
+    # end is not always provided, so only show when provided
+    if end != None:
+        result["end"] = end
+    
+    return result
+#tobs = get_most_active_station_temperatures()
 
 #most_active_station = get_most_active_station()        
     
