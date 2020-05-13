@@ -13,6 +13,7 @@ from sqlalchemy import create_engine, func
 import json
 
 import datetime as dt
+import numpy as np
 from dateutil.relativedelta import relativedelta
 
 engine = create_engine("sqlite:///Resources/hawaii.sqlite")
@@ -20,6 +21,11 @@ engine = create_engine("sqlite:///Resources/hawaii.sqlite")
 # reflect an existing database into a new model
 Base = automap_base()
 Base.prepare(engine, reflect=True)
+
+# Save references to each table
+Measurement = Base.classes.measurement
+Station = Base.classes.station
+
 
 #shared constant
 last_day_of_data_dt = dt.date(2017,8,23)
@@ -45,10 +51,6 @@ def get_12_months_back_date():
 def get_most_active_station():
     # Create our session (link) from Python to the DB
     session = Session(engine)
-    
-    # Save references to each table
-    Measurement = Base.classes.measurement
-    Station = Base.classes.station
 
     sel=[Station.station,
         func.count(Measurement.tobs)]
@@ -61,21 +63,17 @@ def get_most_active_station():
             .order_by(func.count(Measurement.tobs).desc())
     return active_stations_query.limit(1)[0][0]    
 
+
 def get_precipitations():
     # Create our session (link) from Python to the DB
     session = Session(engine)
     
-    # Save references to each table
-    Measurement = Base.classes.measurement
   
     # Perform a query to retrieve the data and precipitation scores
     prcp_data = session.query(Measurement.date, Measurement.prcp) \
        .all()
-    
-    prcps = []
-    for date, prcp in prcp_data:
-        precipitation = Precipitation(date, prcp)
-        prcps.append(precipitation.serialize())
+       
+    prcps = list(np.ravel(prcp_data))
         
     return {"precipitations": prcps}
  
@@ -166,3 +164,6 @@ def get_temperatures_start_end(start, end):
     
 # stations = get_stations()
 # print(stations)
+
+#precipitations = get_precipitations()
+#print(precipitations)
